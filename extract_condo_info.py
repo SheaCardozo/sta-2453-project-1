@@ -18,7 +18,11 @@ sales_info = []
 
 with Chrome(executable_path=".\\driver\\chromedriver.exe") as driver:
     driver.implicitly_wait(10)
-    for link in links:
+    for n, link in enumerate(links):
+
+        if n % 100 == 0:
+            print(n)
+
         driver.get(link)
 
         source = driver.page_source
@@ -74,7 +78,7 @@ with Chrome(executable_path=".\\driver\\chromedriver.exe") as driver:
         
         sales_info.append(reordered_dict)
 
-with open('.\\data\\realtor.csv', 'w+') as csvfile:
+with open('.\\data\\realtor.csv', 'w+', newline="") as csvfile:
     writer = csv.DictWriter(csvfile, fieldnames = key_lst)
     writer.writeheader()
     writer.writerows(sales_info)
