@@ -13,7 +13,7 @@ with open(".\\data\\condolinks.txt", "r+") as f:
 
 check = """<html style="height:100%"><head><meta name="ROBOTS" content="NOINDEX, NOFOLLOW">"""
 
-key_lst = ['Address1', 'Address2', 'propertyID', 'listingID', 'propertyType', 'price', 'leasePrice', 'buildingType', 'neighbourhood', 'bathrooms', 'bedrooms', 'communityFeatures', 'nearbyAmenities', 'storeys', 'walkscore', 'transitscore', 'machineryIncluded', 'rentalEquipment', 'parkingType', 'majorBusinessType', 'minorBusinessType', 'totalUnits', 'landSize', 'zoningType', 'interiorFloorSpace', 'exteriorBuildingSize', 'franchise', 'buildingAmenities', 'buildingStyle', 'basementDevelopment', 'notificationUpdate', 'anchor', 'retailStorefront', 'clearCeilingHeight', 'hasphoto', 'photos', 'multimediaFeatures', 'listingVideoType', 'city', 'province', 'soldData', 'hasAlternateFeatureSheet', 'hasOpenHouse', 'hasVirtualOpenHouse', 'hasCMHCFTHBBanner', 'hasTDpreApprovalIcon', 'hasActiveVirtualOpenHouse', 'Property Type', 'Building Type', 'Community Name', 'Title', 'Annual Property Taxes', 'Parking Type', 'Time on REALTOR.ca', 'Above Grade', 'Total', 'Features', 'Building Amenities', 'Cooling', 'Heating Type', 'Exterior Finish', 'Pool Type', 'Community Features', 'Amenities Nearby', 'Maintenance Fees', 'Maintenance Management Company', 'Total Parking Spaces']
+key_lst = ['Address1', 'Address2', 'propertyID', 'listingID', 'propertyType', 'price', 'leasePrice', 'buildingType', 'neighbourhood', 'bathrooms', 'bedrooms', 'communityFeatures', 'nearbyAmenities', 'storeys', 'walkscore', 'transitscore', 'machineryIncluded', 'rentalEquipment', 'parkingType', 'majorBusinessType', 'minorBusinessType', 'totalUnits', 'landSize', 'zoningType', 'interiorFloorSpace', 'exteriorBuildingSize', 'franchise', 'buildingAmenities', 'buildingStyle', 'basementDevelopment', 'notificationUpdate', 'anchor', 'retailStorefront', 'clearCeilingHeight', 'hasphoto', 'photos', 'multimediaFeatures', 'listingVideoType', 'city', 'province', 'soldData', 'hasAlternateFeatureSheet', 'hasOpenHouse', 'hasVirtualOpenHouse', 'hasCMHCFTHBBanner', 'hasTDpreApprovalIcon', 'hasActiveVirtualOpenHouse', 'Property Type', 'Building Type', 'Community Name', 'Title', 'Annual Property Taxes', 'Parking Type', 'Time on REALTOR.ca', 'Above Grade', 'Total', 'Features', 'Building Amenities', 'Cooling', 'Heating Type', 'Exterior Finish', 'Pool Type', 'Community Features', 'Amenities Nearby', 'Maintenance Fees', 'Maintenance Management Company', 'Total Parking Spaces', 'rooms_info']
 sales_info = []
 
 with Chrome(executable_path=".\\driver\\chromedriver.exe") as driver:
@@ -30,6 +30,7 @@ with Chrome(executable_path=".\\driver\\chromedriver.exe") as driver:
         sleep(2)
 
         if source[:len(check)] == check:
+            print('Stopped')
             input()
             sleep(1)
 
@@ -52,7 +53,12 @@ with Chrome(executable_path=".\\driver\\chromedriver.exe") as driver:
                 tmp += s
 
         sale_property = tmp[:-2]+"}"
-        property_dict = json.loads(sale_property)
+        try:
+            property_dict = json.loads(sale_property)
+        except Exception:
+            print(link)
+            print(sale_property)
+            assert False
 
         # extract more info
         sale_address = sale_soup.find(attrs={'class':'listingTopDetailsLeft'}).h1.contents
@@ -61,13 +67,34 @@ with Chrome(executable_path=".\\driver\\chromedriver.exe") as driver:
         else:
             address_dict = {'Address1': sale_address[0], 'Address2': sale_address[2]}
         soup_building_info = sale_soup.find_all(attrs={'class':'propertyDetailsSectionContentSubCon'})
-        building_info_dict = dict()
+        building_info_dict = {}
         for info in soup_building_info:
-            building_info_dict[info.find(attrs={'class':'propertyDetailsSectionContentLabel'}).string] = info.find(attrs={'class':'propertyDetailsSectionContentValue'}).text    
-        
+            building_info_dict[info.find(attrs={'class':'propertyDetailsSectionContentLabel'}).string] = info.find(attrs={'class':'propertyDetailsSectionContentValue'}).text   
+
+        room_info_dict = {} 
+        soup_room_info = sale_soup.find(attrs={'class': 'propertyDetailsRoomContent'})
+        try:
+            if soup_room_info is not None:
+                floor = "Base"
+                for room in soup_room_info.findChildren("div" , recursive=False):
+                    room_floor = room.find(attrs={'class': 'listingDetailsRoomDetails_Floor'}).text
+                    if room_floor != "":
+                        floor = room_floor
+
+                    if floor not in room_info_dict:
+                        room_info_dict[floor] = {}
+
+                    room_info_dict[floor][room.find(attrs={'class': 'listingDetailsRoomDetails_Room'}).text] = room.find(attrs={'class':'listingDetailsRoomDetails_Dimensions Metric'}).text
+        except Exception:
+            print(link)
+            assert False
+
+        room_info_dict = {'rooms_info': room_info_dict}
+
         full_dict = address_dict.copy() 
         full_dict.update(property_dict)
         full_dict.update(building_info_dict)
+        full_dict.update(room_info_dict)
         
         # add missing field with ''
         for key in key_lst:
