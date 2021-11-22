@@ -10,6 +10,7 @@ import json
 with open(".\\data\\condolinks.txt", "r+") as f:
     links = [s.strip() for s in f.readlines()]
 
+links = list(reversed(links))
 
 check = """<html style="height:100%"><head><meta name="ROBOTS" content="NOINDEX, NOFOLLOW">"""
 
@@ -56,9 +57,8 @@ with Chrome(executable_path=".\\driver\\chromedriver.exe") as driver:
         try:
             property_dict = json.loads(sale_property)
         except Exception:
-            print(link)
-            print(sale_property)
-            assert False
+            print("Failure to extract:" + link)
+            continue
 
         # extract more info
         sale_address = sale_soup.find(attrs={'class':'listingTopDetailsLeft'}).h1.contents
@@ -105,7 +105,7 @@ with Chrome(executable_path=".\\driver\\chromedriver.exe") as driver:
         
         sales_info.append(reordered_dict)
 
-with open('.\\data\\realtor.csv', 'w+', newline="") as csvfile:
+with open(f'.\\data\\realtor.csv', 'w+', newline="") as csvfile:
     writer = csv.DictWriter(csvfile, fieldnames = key_lst)
     writer.writeheader()
     writer.writerows(sales_info)
