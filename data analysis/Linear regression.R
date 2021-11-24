@@ -65,20 +65,10 @@ realtor_data <- realtor_data %>%
 #group heating type
 realtor_data <- realtor_data %>%
   mutate(heating_type = case_when(
-    heating_type %in% c("Baseboard heaters", 
-                        "Baseboard heaters (Electric)",
-                        "Baseboard heaters (Natural gas)") ~ "Baseboard heaters",
-    heating_type %in% c("Forced air", "Forced air (Electric)",
-                        "Forced air (Natural gas)",
-                        "Forced air, (Natural gas)",
-                        "Forced air, Hot water radiator heat") ~ "Forced air",
-    heating_type %in% c("Heat Pump","Heat Pump (Electric)",
-                        "Heat Pump (Natural gas)",
-                        "Heat Pump, (Natural gas)") ~ "Heat Pump",
-    heating_type %in% c("Hot water radiator heat (Natural gas)",
-                        "Radiant heat",
-                        "Radiant heat (Electric)",
-                        "Radiant heat (Natural gas)") ~ "Radiant heat",
+    str_detect(heating_type, 'Baseboard')~ "Baseboard heaters",
+    str_detect(heating_type, 'Forced air')~ "Forced air",
+    str_detect(heating_type, 'Heat Pump')~ "Heat Pump",
+    str_detect(heating_type, 'radia')~ "Radiant heat",
     TRUE ~ heating_type
   ))
 
@@ -98,6 +88,39 @@ realtor_data <- realtor_data %>%
   mutate(annual_property_tax = as.numeric
          (gsub('[$, (CAD)]', '', annual_property_tax))) 
 
+#group exterior type
+realtor_data <- realtor_data %>%
+  mutate(exterior_finish = case_when(
+    str_detect(exterior_finish, 'Aluminum')~ "Aluminum",
+    str_detect(exterior_finish, 'Brick')~ "Brick",
+    str_detect(exterior_finish, 'Concrete')~ "Concrete",
+    str_detect(exterior_finish, 'Metal')~ "Metal",
+    str_detect(exterior_finish, 'Stone')~ "Stone",
+    TRUE ~ exterior_finish
+  ))
+
+#extract car wash feature
+realtor_data <- realtor_data %>%
+  mutate(feature_car_wash = case_when(
+    str_detect(building_amenities, 'Car')~ 'TRUE',
+    TRUE ~ 'FALSE'
+  ))
+
+#extract exercise center feature
+realtor_data <- realtor_data %>%
+  mutate(feature_exercise_center = case_when(
+    str_detect(building_amenities, 'Exercise')~ 'TRUE',
+    TRUE ~ 'FALSE'
+  ))
+
+#extract storage feature
+realtor_data <- realtor_data %>%
+  mutate(feature_storge = case_when(
+    str_detect(building_amenities, 'Storage')~ 'TRUE',
+    TRUE ~ 'FALSE'
+  ))
+
+#fit linear regression model
 full_model <- lm(price~., data=na.omit(realtor_data))
 
 backward_selection <- stats::step(full_model) 
@@ -105,6 +128,20 @@ backward_selection <- stats::step(full_model)
 summary(backward_selection)
 
 
+#test model assumptions
+best_model <- backward_selection
+
+test <- data.frame(
+  R2 = modelr::rsquare(best_model, data = na.omit(realtor_data)),
+  RMSE = modelr::rmse(best_model, data = na.omit(realtor_data)),
+  MAE = modelr::mae(best_model, data = na.omit(realtor_data)),
+  AIC = AIC(best_model),
+  BIC = BIC(best_model)
+)
+glimpse(test)
+
+par(mfrow=c(2,2))
+plot(best_model)
 
 
 
